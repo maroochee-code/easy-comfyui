@@ -21,6 +21,7 @@
     --MASK: #e0e0e0;
     --AUDIO: #2ecc71;
     --CONTROL_NET: #00c2a8; /* 표준 8색 외 추가색 (ControlNet 사용 시) */
+    --IPADAPTER: #ff8fb8;   /* 표준 8색 외 추가색 (IP-Adapter 사용 시) */
   }
   body {
     background-color: var(--bg);
@@ -165,6 +166,14 @@
   .tip .t { font-weight: 700; margin-bottom: 4px; color: #fff; }
   .tip p { margin: 3px 0; }
   .tip b { color: #ffd166; }
+  .tables { max-width: 1530px; margin-top: 28px; }
+  .tables h3 { font-size: 15px; margin: 22px 0 8px; }
+  .tables p.note { font-size: 12px; color: var(--text-dim); margin: 0 0 8px; }
+  .tables table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+  .tables th, .tables td { border: 1px solid var(--border); padding: 6px 9px; text-align: left; vertical-align: top; }
+  .tables th { background: var(--panel-header); }
+  .tables td.dot { width: 10px; padding: 0; }
+  .tables code { color: #ffd166; word-break: break-all; }
 </style>
 </head>
 <body>
@@ -180,6 +189,7 @@
     <svg class="wires" id="wires"></svg>
   </div>
   <div class="tip" id="tip"></div>
+  <div class="tables" id="tables"></div>
 
 <script>
 // AGENT INSTRUCTION: Replace WORKFLOW_DATA with the target pipeline nodes and links.
@@ -197,7 +207,7 @@ function renderBlueprint(data) {
   const canvas = document.getElementById("canvas");
   const svg = document.getElementById("wires");
 
-  const types = ["MODEL", "CLIP", "VAE", "CONDITIONING", "LATENT", "IMAGE", "MASK", "AUDIO", "CONTROL_NET"];
+  const types = ["MODEL", "CLIP", "VAE", "CONDITIONING", "LATENT", "IMAGE", "MASK", "AUDIO", "CONTROL_NET", "IPADAPTER"];
   const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
   types.forEach(t => {
     const marker = document.createElementNS("http://www.w3.org/2000/svg", "marker");
@@ -293,6 +303,34 @@ function renderBlueprint(data) {
 }
 
 renderBlueprint(WORKFLOW_DATA);
+
+// 연결 확인표 + 필요 파일 표를 WORKFLOW_DATA 에서 자동 생성한다.
+// 사용자가 ComfyUI 화면과 비교해 빠진 선·잘못 이은 선을 찾는 기준이다.
+// WORKFLOW_DATA.files = [{ folder, name, size, note, url }] 를 넣으면 필요 파일 표도 나온다.
+(function renderTables(data) {
+  const box = document.getElementById("tables");
+  const esc = s => String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/</g, "&lt;");
+  const byId = {};
+  data.nodes.forEach(n => byId[n.id] = n);
+  let html = "";
+
+  if (data.files && data.files.length) {
+    html += `<h3>필요한 파일 (받아서 넣어야 하는 것)</h3>
+      <p class="note">파일 이름은 한 글자라도 다르면 ComfyUI가 찾지 못하거나 다른 파일로 조용히 바꿉니다.</p>
+      <table><tr><th>저장 폴더 (models 아래)</th><th>파일 이름</th><th>크기</th><th>비고 / 받는 곳</th></tr>` +
+      data.files.map(f => `<tr><td><code>${esc(f.folder)}</code></td><td><code>${esc(f.name)}</code></td><td>${esc(f.size)}</td><td>${esc(f.note)} ${f.url ? '<br><code>' + esc(f.url) + '</code>' : ""}</td></tr>`).join("") +
+      `</table>`;
+  }
+
+  html += `<h3>연결 확인표 (ComfyUI 화면과 비교하세요)</h3>
+    <p class="note">도착 노드를 기준으로 정렬했습니다. 입력 칸마다 선이 이 표대로 들어와 있어야 합니다.</p>
+    <table><tr><th>도착 노드</th><th>입력 칸</th><th>← 출발 노드</th><th>출력 칸</th><th>종류</th></tr>` +
+    data.links.slice().sort((a, b) => a.to[0] - b.to[0]).map(l => {
+      const f = byId[l.from[0]], t = byId[l.to[0]];
+      return `<tr><td>${esc(t.title)}</td><td><code>${esc(l.to[1])}</code></td><td>${esc(f.title)}</td><td><code>${esc(l.from[1])}</code></td><td style="color:var(--${l.type})">${esc(l.type)}</td></tr>`;
+    }).join("") + `</table>`;
+  box.innerHTML = html;
+})(WORKFLOW_DATA);
 </script>
 </body>
 </html>

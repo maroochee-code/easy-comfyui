@@ -86,3 +86,16 @@
 - **Prompt Rule**: 긍정에 `anime style, 1boy` + 사진 속 특징(안경, 옷, 소품, 배경, 포즈)을 말로 다시 적고, 부정에 `photo, realistic, 3d, lowres, bad hands, extra fingers`로 실사 회귀를 막는다.
 - **Low VRAM(6GB 이하) 팁**: 윤곽선 ControlNet 제거, megapixels 0.7, steps 20.
 - **대안(미검증)**: Qwen Image Edit 계열에 "애니 스타일로, 포즈 유지" 프롬프트만 주는 방식. 파일명 검증 필요.
+
+### I. IP-Adapter 얼굴 유지 + ControlNet 포즈 (인물 사진의 소년이 다른 사진의 자세를 하도록) ✅ 실제 실행 검증됨
+2026-11 Windows ComfyUI Desktop, RTX 2060 6GB. 위 H항목의 체크포인트·openpose 모델과 `comfyui_controlnet_aux`를 그대로 쓰고, 얼굴 유지용으로 IP-Adapter를 더한다. (파일명·크기는 Hugging Face 저장소 페이지로 확인)
+- **Custom Node**: `ComfyUI_IPAdapter_plus` (cubiq, Manager 검색어 `ipadapter plus`). 2025-04-14부터 "maintenance only" 상태라 ComfyUI 업데이트 후 호환 문제가 생길 수 있다.
+- **Models & Folders** (`models/` 아래):
+  - `ipadapter/ip-adapter-plus-face_sdxl_vit-h.safetensors` (848MB, h94/IP-Adapter `sdxl_models`). 같은 이름의 `.bin`(1.01GB)이 아닌 `.safetensors`.
+  - `clip_vision/CLIP-ViT-H-14-laion2B-s32B-b79K.safetensors` (2.53GB). h94/IP-Adapter `models/image_encoder`의 `model.safetensors`를 **이 이름으로 바꿔야** Unified Loader가 찾는다.
+  - `ipadapter` 폴더는 처음엔 없어서 직접 만들어야 하고, 만든 뒤 ComfyUI를 재시작한다.
+- **Key Nodes (API class_type)**: `PrepImageForClipVision`(interpolation `LANCZOS`, crop_position `top`, sharpening 0.0), `IPAdapterUnifiedLoader`(preset `PLUS FACE (portraits)`, 출력 MODEL·IPADAPTER), `IPAdapterAdvanced`(입력 model·ipadapter·image, weight 0.8, weight_type `linear`, combine_embeds `concat`, start 0.0, end 1.0, embeds_scaling `V only`, 출력 MODEL).
+- **연결 순서**: 체크포인트 MODEL → UnifiedLoader → IPAdapterAdvanced → **KSampler.model**. 인물 사진 → PrepImage → Advanced.image. UnifiedLoader의 ipadapter → Advanced.ipadapter. (UnifiedLoader 출력을 KSampler에 바로 이으면 IP-Adapter가 적용되지 않는다.)
+- **포즈 쪽**: 참고 사진 → 크기 조정 → DWPreprocessor(scale_stick_for_xinsr_cn enable) → ControlNetApplyAdvanced(strength 1.0, end 0.9). 시작 latent는 포즈 사진을 VAEEncode한 것을 쓰되 KSampler `denoise 1.0`이라 크기만 남는다. 윤곽선 ControlNet은 포즈 사진 속 옷·체형까지 따라 하므로 쓰지 않는다.
+- **슬롯 색**: IPADAPTER `#ff8fb8`(표준 외 추가색).
+- **한계**: 전신에서는 얼굴이 작아 닮은 정도가 제한적이다. 개선은 얼굴 영역 재생성(FaceDetailer 등)이 필요하나 미검증 `[확인 필요]`. 6GB VRAM에서는 모델 오프로딩으로 느리다.
