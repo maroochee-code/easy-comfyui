@@ -1,9 +1,9 @@
 ---
-name: easy-compyui
-description: EasyCompyUI 스킬. 자연어로 원하는 기능을 말하면 ComfyUI 최적 AI 엔진 추천, 필수 모델 저장 경로, 단계별 노드 연결 가이드, 자바스크립트 자동 배선 HTML 설계도 및 경량 연결 JSON을 생성합니다. Use when the user asks to create a ComfyUI workflow, requests step-by-step node connection tutorials, asks for an HTML visual node diagram, or wants a ComfyUI workflow format.
+name: easy-comfyui
+description: EasyComfyUI 스킬. 자연어로 원하는 기능을 말하면 ComfyUI 최적 AI 엔진 추천, 필수 모델 저장 경로, 단계별 노드 연결 가이드, 자바스크립트 자동 배선 HTML 설계도 및 경량 연결 JSON을 생성합니다. Use when the user asks to create a ComfyUI workflow, requests step-by-step node connection tutorials, asks for an HTML visual node diagram, or wants a ComfyUI workflow format.
 ---
 
-# EasyCompyUI (ComfyUI Workflow Architect)
+# EasyComfyUI (ComfyUI Workflow Architect)
 
 사용자의 자연어 요구사항을 분석하여 최적의 ComfyUI AI 엔진을 추천하고, 단계별 노드 연결 가이드, 브라우저에서 실행 가능한 자동 배선 HTML 설계도, 그리고 ComfyUI 호환형 구조 JSON을 생성합니다.
 

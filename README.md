@@ -1,4 +1,4 @@
-# easy-compyui
+# easy-comfyui
 
 ComfyUI를 쉽게 쓰기 위한 Claude Code 스킬입니다. 원하는 기능을 자연어로 말하면 최적의 AI 엔진을 추천하고, 노드 연결 방법과 설계도를 만들어 줍니다.
 
@@ -27,10 +27,10 @@ ComfyUI를 쉽게 쓰기 위한 Claude Code 스킬입니다. 원하는 기능을
 
 이 폴더를 통째로 스킬 디렉터리에 넣습니다.
 
-- 프로젝트용: `<프로젝트>/.claude/skills/easy-compyui/`
-- 전체 공용: `~/.claude/skills/easy-compyui/`
+- 프로젝트용: `<프로젝트>/.claude/skills/easy-comfyui/`
+- 전체 공용: `~/.claude/skills/easy-comfyui/`
 
-새 세션에서 `/easy-compyui`로 호출하거나, "ComfyUI로 ○○ 워크플로우 만들어줘"처럼 말하면 자동으로 쓰입니다.
+새 세션에서 `/easy-comfyui`로 호출하거나, "ComfyUI로 ○○ 워크플로우 만들어줘"처럼 말하면 자동으로 쓰입니다.
 
 ## 슬롯 색상 표준
 
