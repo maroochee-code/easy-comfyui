@@ -72,3 +72,17 @@
   - Text Encoder (`models/text_encoders/`): `qwen3_vl_32b_int8.safetensors`
   - VAE (`models/vae/`): Requires both `minimax_video_vae.safetensors` and `minimax_audio_vae.safetensors`
 - **Key Nodes**: `MiniMaxH3ReferenceToVideo`, `ResolutionSelector` (0.2-0.5 MP for initial low-res pass -> Latent Upscale -> High-res pass), `MathExpression` (24 fps * seconds).
+
+### H. SDXL Anime img2img + ControlNet (사진 → 애니 변환, 포즈 유지) ✅ 실제 실행 검증됨
+2026-11 Windows ComfyUI Desktop, RTX 2060 6GB에서 실행해 결과 확인(첫 실행 268초). 아래 항목 중 "(HF 확인)"은 Hugging Face 저장소 페이지에서 직접 확인한 값.
+- **Models & Folders**:
+  - Checkpoint (`models/checkpoints/`): `animagine-xl-3.1.safetensors` (6.94GB, cagliostrolab/animagine-xl-3.1, openrail++) (HF 확인)
+  - ControlNet (`models/controlnet/`), 두 방식 중 택일:
+    - 전용 모델 2개: `xinsir_openpose_sdxl.safetensors`(포즈), `xinsir_canny_sdxl_v2.safetensors`(윤곽선) — 사용자 환경에서 실제 동작 확인
+    - Union 1개: xinsir/controlnet-union-sdxl-1.0 저장소의 `diffusion_pytorch_model_promax.safetensors` (2.51GB, 이름이 `_promax`로 끝나는 쪽) (HF 확인). 저장소 파일명이 일반적이라 `controlnet-union-sdxl-1.0_promax.safetensors`처럼 바꿔 두면 구분이 쉽다. 이 경우 `SetUnionControlNetType`이 필요하나 Union 구성은 **실행 검증하지 못함 [확인 필요]**.
+- **Custom Node**: `comfyui_controlnet_aux` (fannovel16, Manager에서 검색어 `controlnet aux`). `DWPreprocessor`, `LineArtPreprocessor` 제공. 같은 이름 계열(`ComfyUI-ControlnetAux` cvalentin, `ComfyUI-ControlNet-Nodes`)과 혼동 주의.
+- **Key Nodes (API class_type)**: `LoadImage`, `ImageScaleToTotalPixels`(megapixels 1.0, lanczos), `CheckpointLoaderSimple`, `DWPreprocessor`(detect_hand/body/face `enable`, resolution 1024, bbox `yolox_l.onnx`, pose `dw-ll_ucoco_384.onnx`, `scale_stick_for_xinsr_cn` `enable`), `Canny`(low 0.4 / high 0.8, 코어 노드), `ControlNetLoader`, `ControlNetApplyAdvanced`(포즈 강도 0.9 end 0.8 → 윤곽선 강도 0.5 end 0.6 순서로 직렬 연결), `CLIPTextEncode`×2, `VAEEncode`, `KSampler`, `VAEDecode`, `SaveImage`.
+- **Recommended Settings**: Steps 28, CFG 6.0, Sampler `euler_ancestral`, Scheduler `normal`, **Denoise 0.62**(원본 유지와 스타일 변화의 균형. 0.7↑ 더 애니, 0.5↓ 원본에 가까움).
+- **Prompt Rule**: 긍정에 `anime style, 1boy` + 사진 속 특징(안경, 옷, 소품, 배경, 포즈)을 말로 다시 적고, 부정에 `photo, realistic, 3d, lowres, bad hands, extra fingers`로 실사 회귀를 막는다.
+- **Low VRAM(6GB 이하) 팁**: 윤곽선 ControlNet 제거, megapixels 0.7, steps 20.
+- **대안(미검증)**: Qwen Image Edit 계열에 "애니 스타일로, 포즈 유지" 프롬프트만 주는 방식. 파일명 검증 필요.

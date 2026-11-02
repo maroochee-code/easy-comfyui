@@ -20,6 +20,7 @@
     --IMAGE: #4cc9f0;
     --MASK: #e0e0e0;
     --AUDIO: #2ecc71;
+    --CONTROL_NET: #00c2a8; /* 표준 8색 외 추가색 (ControlNet 사용 시) */
   }
   body {
     background-color: var(--bg);
@@ -40,8 +41,9 @@
   }
   .canvas {
     position: relative;
-    width: 1480px;
-    height: 680px;
+    /* 노드 수에 맞춰 조정. 노드 폭 220px + 열 간격 30px 기준, 높이는 아래 노드 y 좌표 + 노드 높이 */
+    width: 1530px;
+    height: 760px;
     background: radial-gradient(#282838 1px, transparent 1px);
     background-size: 22px 22px;
     border: 1px solid var(--border);
@@ -142,6 +144,27 @@
     border-radius: 0 0 7px 7px;
     line-height: 1.4;
   }
+  .node { cursor: help; }
+  .tip {
+    position: fixed;
+    z-index: 100;
+    max-width: 340px;
+    background: #0e0e12;
+    border: 1px solid #5a5a70;
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 12.5px;
+    line-height: 1.55;
+    color: var(--text-main);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.1s;
+  }
+  .tip.on { opacity: 1; }
+  .tip .t { font-weight: 700; margin-bottom: 4px; color: #fff; }
+  .tip p { margin: 3px 0; }
+  .tip b { color: #ffd166; }
 </style>
 </head>
 <body>
@@ -150,15 +173,19 @@
   <div class="legend">
     <span>● 채워진 원: 필수 연결 슬롯</span>
     <span>○ 비어있는 원: 선택 연결 슬롯</span>
-    <span>※ 배선 위에 마우스를 올리면 경로가 강조됩니다.</span>
+    <span>※ 노드 위에 마우스를 올리면 역할 설명이 뜹니다. 배선 위에 올리면 경로가 강조됩니다.</span>
   </div>
 
   <div class="canvas" id="canvas">
     <svg class="wires" id="wires"></svg>
   </div>
+  <div class="tip" id="tip"></div>
 
 <script>
 // AGENT INSTRUCTION: Replace WORKFLOW_DATA with the target pipeline nodes and links.
+// node: { id, title, x, y, badge, inputs:[{name,type,required?}], outputs:[{name,type}], params:[string],
+//         tip:[{label:"역할", text:"..."}, {label:"왜", text:"..."}] }   <- tip은 마우스 오버 말풍선(기획자 눈높이로 작성)
+// 슬롯 name은 한 노드 안에서 입력끼리, 출력끼리 겹치지 않게 쓴다. 입력/출력 이름이 같아도(positive 등) 괜찮다.
 const WORKFLOW_DATA = {
   title: "ComfyUI Pipeline Blueprint",
   nodes: [],
@@ -170,7 +197,7 @@ function renderBlueprint(data) {
   const canvas = document.getElementById("canvas");
   const svg = document.getElementById("wires");
 
-  const types = ["MODEL", "CLIP", "VAE", "CONDITIONING", "LATENT", "IMAGE", "MASK", "AUDIO"];
+  const types = ["MODEL", "CLIP", "VAE", "CONDITIONING", "LATENT", "IMAGE", "MASK", "AUDIO", "CONTROL_NET"];
   const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
   types.forEach(t => {
     const marker = document.createElementNS("http://www.w3.org/2000/svg", "marker");
@@ -220,6 +247,24 @@ function renderBlueprint(data) {
       <div class="params">${(n.params || []).join("<br>")}</div>
     `;
     canvas.appendChild(el);
+
+    if (n.tip && n.tip.length) {
+      const tip = document.getElementById("tip");
+      el.addEventListener("mouseenter", () => {
+        tip.innerHTML = `<div class="t">${n.title}</div>` +
+          n.tip.map(t => `<p><b>${t.label}</b> ${t.text}</p>`).join("");
+        tip.classList.add("on");
+      });
+      el.addEventListener("mousemove", e => {
+        const w = tip.offsetWidth, h = tip.offsetHeight;
+        let x = e.clientX + 16, y = e.clientY + 16;
+        if (x + w > innerWidth - 8) x = e.clientX - w - 16;
+        if (y + h > innerHeight - 8) y = e.clientY - h - 16;
+        tip.style.left = Math.max(8, x) + "px";
+        tip.style.top = Math.max(8, y) + "px";
+      });
+      el.addEventListener("mouseleave", () => tip.classList.remove("on"));
+    }
   });
 
   requestAnimationFrame(() => {
