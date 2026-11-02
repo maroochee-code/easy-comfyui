@@ -41,3 +41,7 @@ MODEL `#b58df1` · CLIP `#ffd166` · VAE `#ff6b6b` · CONDITIONING `#f77f00` · 
 ## 변경 기록
 
 버전별 변경 내용은 [CHANGELOG.md](CHANGELOG.md)를 참고하세요.
+
+## 라이선스
+
+[MIT License](LICENSE)입니다. 자유롭게 사용, 수정, 배포할 수 있고, 저작권 표시와 라이선스 문구만 유지하면 됩니다. 소프트웨어는 보증 없이 있는 그대로 제공됩니다.
