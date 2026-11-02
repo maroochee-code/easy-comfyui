@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ComfyUI Pipeline Blueprint</title>
+<style>
+  :root {
+    --bg: #141418;
+    --panel: #202028;
+    --panel-header: #2b2b36;
+    --border: #333342;
+    --text-main: #f0f0f5;
+    --text-dim: #9999aa;
+    --MODEL: #b58df1;
+    --CLIP: #ffd166;
+    --VAE: #ff6b6b;
+    --CONDITIONING: #f77f00;
+    --LATENT: #c77dff;
+    --IMAGE: #4cc9f0;
+    --MASK: #e0e0e0;
+    --AUDIO: #2ecc71;
+  }
+  body {
+    background-color: var(--bg);
+    color: var(--text-main);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    margin: 0;
+    padding: 24px;
+    overflow-x: auto;
+  }
+  h2 { margin: 0 0 6px; font-size: 20px; }
+  .legend {
+    display: flex;
+    gap: 18px;
+    font-size: 12px;
+    color: var(--text-dim);
+    margin-bottom: 20px;
+    align-items: center;
+  }
+  .canvas {
+    position: relative;
+    width: 1480px;
+    height: 680px;
+    background: radial-gradient(#282838 1px, transparent 1px);
+    background-size: 22px 22px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+  }
+  svg.wires {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 10;
+    pointer-events: none;
+  }
+  path.wire {
+    fill: none;
+    stroke-width: 2.5px;
+    opacity: 0.8;
+    pointer-events: stroke;
+    transition: opacity 0.15s, stroke-width 0.15s;
+  }
+  path.wire:hover {
+    opacity: 1;
+    stroke-width: 4.5px;
+  }
+  .node {
+    position: absolute;
+    width: 220px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    box-shadow: 0 6px 16px rgba(0,0,0,0.45);
+    z-index: 5;
+    box-sizing: border-box;
+  }
+  .node-header {
+    background: var(--panel-header);
+    padding: 7px 11px;
+    border-radius: 7px 7px 0 0;
+    font-size: 12px;
+    font-weight: 700;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+  }
+  .badge {
+    font-size: 10px;
+    padding: 2px 5px;
+    border-radius: 3px;
+    background: #d35400;
+    color: #fff;
+  }
+  .badge.custom { background: #2980b9; }
+  .slots-grid {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+  }
+  .col-in, .col-out {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .slot-row {
+    position: relative;
+    height: 22px;
+    display: flex;
+    align-items: center;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .col-in .slot-row { padding-left: 14px; }
+  .col-out .slot-row { padding-right: 14px; justify-content: flex-end; }
+  .socket {
+    position: absolute;
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    box-sizing: border-box;
+  }
+  .socket.required {
+    background: currentColor;
+    box-shadow: 0 0 5px currentColor;
+  }
+  .socket.optional {
+    background: var(--panel);
+    border: 2px solid currentColor;
+  }
+  .col-in .socket { left: -6px; }
+  .col-out .socket { right: -6px; }
+  .params {
+    padding: 6px 10px 8px;
+    font-size: 11px;
+    color: var(--text-dim);
+    border-top: 1px solid #282834;
+    background: #191920;
+    border-radius: 0 0 7px 7px;
+    line-height: 1.4;
+  }
+</style>
+</head>
+<body>
+
+  <h2 id="wf-title">ComfyUI Pipeline Blueprint</h2>
+  <div class="legend">
+    <span>● 채워진 원: 필수 연결 슬롯</span>
+    <span>○ 비어있는 원: 선택 연결 슬롯</span>
+    <span>※ 배선 위에 마우스를 올리면 경로가 강조됩니다.</span>
+  </div>
+
+  <div class="canvas" id="canvas">
+    <svg class="wires" id="wires"></svg>
+  </div>
+
+<script>
+// AGENT INSTRUCTION: Replace WORKFLOW_DATA with the target pipeline nodes and links.
+const WORKFLOW_DATA = {
+  title: "ComfyUI Pipeline Blueprint",
+  nodes: [],
+  links: []
+};
+
+function renderBlueprint(data) {
+  document.getElementById("wf-title").textContent = data.title;
+  const canvas = document.getElementById("canvas");
+  const svg = document.getElementById("wires");
+
+  const types = ["MODEL", "CLIP", "VAE", "CONDITIONING", "LATENT", "IMAGE", "MASK", "AUDIO"];
+  const defs = document.createElementNS("http://www.w3.org/2000/svg", "defs");
+  types.forEach(t => {
+    const marker = document.createElementNS("http://www.w3.org/2000/svg", "marker");
+    marker.setAttribute("id", `arrow-${t}`);
+    marker.setAttribute("viewBox", "0 0 10 10");
+    marker.setAttribute("refX", "6");
+    marker.setAttribute("refY", "5");
+    marker.setAttribute("markerWidth", "5.5");
+    marker.setAttribute("markerHeight", "5.5");
+    marker.setAttribute("orient", "auto-start-reverse");
+    const p = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    p.setAttribute("d", "M 0 1 L 8 5 L 0 9 z");
+    p.setAttribute("fill", `var(--${t})`);
+    marker.appendChild(p);
+    defs.appendChild(marker);
+  });
+  svg.appendChild(defs);
+
+  data.nodes.forEach(n => {
+    const el = document.createElement("div");
+    el.className = "node";
+    el.style.left = n.x + "px";
+    el.style.top = n.y + "px";
+
+    const isCustom = n.badge && n.badge !== "Core";
+    const inHtml = (n.inputs || []).map(s => `
+      <div class="slot-row" style="color: var(--${s.type})">
+        <span class="socket ${s.required !== false ? 'required' : 'optional'}" id="in-${n.id}-${s.name}"></span>
+        <span>${s.name}</span>
+      </div>`).join("");
+
+    const outHtml = (n.outputs || []).map(s => `
+      <div class="slot-row" style="color: var(--${s.type})">
+        <span>${s.name}</span>
+        <span class="socket ${s.required !== false ? 'required' : 'optional'}" id="out-${n.id}-${s.name}"></span>
+      </div>`).join("");
+
+    el.innerHTML = `
+      <div class="node-header">
+        <span>${n.title}</span>
+        <span class="badge ${isCustom ? 'custom' : ''}">${n.badge || 'Core'}</span>
+      </div>
+      <div class="slots-grid">
+        <div class="col-in">${inHtml}</div>
+        <div class="col-out">${outHtml}</div>
+      </div>
+      <div class="params">${(n.params || []).join("<br>")}</div>
+    `;
+    canvas.appendChild(el);
+  });
+
+  requestAnimationFrame(() => {
+    const cRect = canvas.getBoundingClientRect();
+    data.links.forEach(l => {
+      const outEl = document.getElementById(`out-${l.from[0]}-${l.from[1]}`);
+      const inEl = document.getElementById(`in-${l.to[0]}-${l.to[1]}`);
+      if (!outEl || !inEl) return;
+
+      const r1 = outEl.getBoundingClientRect();
+      const r2 = inEl.getBoundingClientRect();
+      const x1 = r1.left + r1.width / 2 - cRect.left;
+      const y1 = r1.top + r1.height / 2 - cRect.top;
+      const x2 = r2.left + r2.width / 2 - cRect.left;
+      const y2 = r2.top + r2.height / 2 - cRect.top;
+
+      const dx = Math.max(Math.abs(x2 - x1) * 0.45, 50);
+      const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      path.setAttribute("d", `M ${x1},${y1} C ${x1 + dx},${y1} ${x2 - dx},${y2} ${x2},${y2}`);
+      path.setAttribute("class", "wire");
+      path.setAttribute("stroke", `var(--${l.type})`);
+      path.setAttribute("marker-end", `url(#arrow-${l.type})`);
+      svg.appendChild(path);
+    });
+  });
+}
+
+renderBlueprint(WORKFLOW_DATA);
+</script>
+</body>
+</html>
